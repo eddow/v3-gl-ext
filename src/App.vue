@@ -30,7 +30,7 @@
 		<golden-layout
 			ref="GLayoutRoot"
 			:config="prefinedLayouts.miniRow"
-			style="width: 100%; height: calc(100% - 90px)"
+			style="width: 100%; height: calc(100% - 162px)"
 		>
 			<template #Content1>
 				<div style="color: white">111</div>
@@ -46,51 +46,59 @@
 			<template #route>
 				<RouterView />
 			</template>
+			<gl-col>
+				<gl-component ref="myComp" id="myComp">
+					<div style="color: white">111</div>
+				</gl-component>
+			</gl-col>
 		</golden-layout>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import GoldenLayout from "@/components/GoldenLayout.vue";
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { prefinedLayouts } from "@/ts/predefined-layouts";
 import C3 from "@/components/Content3.vue";
+import { GoldenLayout, GlCol, GlComponent } from './components/main';
 
 const GLayoutRoot = ref<null | typeof GoldenLayout>(null);
-
+const myComp = ref<null | typeof GlComponent>(null);
+onMounted(() => {
+	//console.log(myComp.value.path);
+});
 const onClickInitLayoutMinRow = () => {
-		if (!GLayoutRoot.value) return;
-		GLayoutRoot.value.loadGLLayout(prefinedLayouts.miniRow);
+	if (!GLayoutRoot.value) return;
+	GLayoutRoot.value.loadGLLayout(prefinedLayouts.miniRow);
 };
 
 const onClickAddGlComponent1 = () => {
-		if (!GLayoutRoot.value) return;
-		GLayoutRoot.value.addGlComponent("Content1", "Title 1st");
+	if (!GLayoutRoot.value) return;
+	GLayoutRoot.value.addGlComponent("Content1", "Title 1st");
 };
 
 const onClickAddGlComponent2 = () => {
-		if (!GLayoutRoot.value) return;
-		GLayoutRoot.value.addGlComponent("Content2", "I'm wide");
+	if (!GLayoutRoot.value) return;
+	GLayoutRoot.value.addGlComponent("Content2", "I'm wide");
 };
 
 const onClickAddGlComponent3 = () => {
-		if (!GLayoutRoot.value) return;
-		GLayoutRoot.value.addGlComponent("Content3", "I'm high");
+	if (!GLayoutRoot.value) return;
+	GLayoutRoot.value.addGlComponent("Content3", "I'm high");
 };
 
 const onClickSaveLayout = () => {
-		if (!GLayoutRoot.value) return;
-		const config = GLayoutRoot.value.getLayoutConfig();
-		localStorage.setItem("gl_config", JSON.stringify(config));
+	if (!GLayoutRoot.value) return;
+	const config = GLayoutRoot.value.getLayoutConfig();
+	localStorage.setItem("gl_config", JSON.stringify(config));
 };
 
 const onClickLoadLayout = () => {
-		const str = localStorage.getItem("gl_config");
-		if (!str) return;
-		if (!GLayoutRoot.value) return;
-		const config = JSON.parse(str as string);
-		GLayoutRoot.value.loadGLLayout(config);
+	const str = localStorage.getItem("gl_config");
+	if (!str) return;
+	if (!GLayoutRoot.value) return;
+	const config = JSON.parse(str as string);
+	GLayoutRoot.value.loadGLLayout(config);
 };
 </script>
 
@@ -132,7 +140,6 @@ nav a:first-of-type {
 
 @media (min-width: 1024px) {
 	header {
-		display: flex;
 		place-items: center;
 		padding-right: calc(var(--section-gap) / 2);
 	}

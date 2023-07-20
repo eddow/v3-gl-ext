@@ -1,16 +1,19 @@
 <template>
 	<div style="position: relative">
+		<ExtractOneChild v-model:child="onlyChild">
+			<slot></slot>
+		</ExtractOneChild>
 		<div ref="GLRoot" style="position: absolute; width: 100%; height: 100%">
 			<!-- Root dom for Golden-Layout manager -->
 		</div>
 		<div style="position: absolute; width: 100%; height: 100%">
-			<gl-component
+			<gl-template
 				v-for="pair in AllComponents"
 				:key="pair[0]"
 				:ref="GlcKeyPrefix + pair[0]"
 			>
 				<component :is="pair[1]"></component>
-			</gl-component>
+			</gl-template>
 		</div>
 	</div>
 </template>
@@ -22,7 +25,11 @@ import {
 	readonly,
 	nextTick,
 	getCurrentInstance,
-type PropType,
+	type PropType,
+	type VNode,
+	inject,
+watchEffect,
+provide,
 } from "vue";
 import {
 	ComponentContainer,
@@ -35,10 +42,21 @@ import {
 	LogicalZIndex,
 	VirtualLayout,
 	ResolvedLayoutConfig,
-JsonValue,
+	JsonValue,
 } from "golden-layout";
-import GlComponent from "@/components/GlComponent.vue";
+import GlTemplate from "@/components/GlTemplate.vue";
+import ExtractOneChild from "@/components/utils/ExtractOneChild.vue";
+import { glParent, type GlChild } from "./roles";
+import { layoutKey } from "./consts";
 
+const
+	onlyChild = ref<undefined | VNode>(),
+	extensoConfig = ref<LayoutConfig | ResolvedLayoutConfig | undefined>();
+watchEffect(()=> {
+	const lr = {root: {}}
+	extensoConfig.value = <LayoutConfig>(onlyChild.value && lr);
+	//&& (<GlChild>onlyChild.value).config;
+});
 type AnyItemConfigs = 
 		RowOrColumnItemConfig[] |
 		StackItemConfig[] |
@@ -63,7 +81,7 @@ const GlcKeyPrefix = readonly(ref("glc_"));
 
 const MapComponents = new Map<
 	ComponentContainer,
-	{ refId: number; glc: typeof GlComponent }
+	{ refId: number; glc: typeof GlTemplate }
 >();
 
 const AllComponents = ref(new Map<number, any>());
@@ -73,7 +91,7 @@ let GlBoundingClientRect: DOMRect;
 
 const instance = getCurrentInstance(),
 	slots = instance!.slots;
-
+provide(layoutKey, instance?.exposed);
 /*******************
  * Method
  *******************/
@@ -228,7 +246,7 @@ onMounted(() => {
 		}
 
 		const ref = GlcKeyPrefix.value + refId;
-		const component = instance?.refs[ref] as typeof GlComponent;
+		const component = instance?.refs[ref] as typeof GlTemplate;
 
 		MapComponents.set(container, { refId: refId, glc: component[0] });
 
@@ -285,6 +303,8 @@ onMounted(() => {
 	if(props.config) loadGLLayout(props.config);
 });
 
+const components = ref<Record<string, any>>({});
+
 /*******************
  * Expose
  *******************/
@@ -297,5 +317,12 @@ defineExpose({
 	*/
 	loadGLLayout,
 	getLayoutConfig,
+	registerComponent: (id: string, component: any) => {
+		components.value[id] = component;
+	},
+	get path() {
+		return '';
+	},
+	...glParent(getCurrentInstance()!)
 });
 </script>
