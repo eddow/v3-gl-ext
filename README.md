@@ -24,7 +24,7 @@ npm run build
 
 ```html
 <template>
-	<golden-layout :config="layoutConfig">
+	<golden-layout :router="true" :config="layoutConfig">
 		<template #myTemplate>
 			...
 		</template>
@@ -44,9 +44,12 @@ npm run build
 </script>
 ```
 
-### TODOs
+### Properties
 
-- [ ] Describe default layout config in the template
+If `router` is true, every route change will either open a new tab or select the good one if already opened. Also, the url changes with tab change.
+
+## TODOs
+
 - [ ] Config watching through property
-- [ ] Dynamic v-node manipulations through the template and no more `add-component` `remove-component`
-- [ ] Router through tabs
+- [ ] Route sub-components
+- [ ] Route whole config (adds in the column/row instead of the stack)
