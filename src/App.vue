@@ -2,13 +2,14 @@
 	<header>
 		<div class="wrapper">
 			<nav>
-				<RouterLink to="/">Home</RouterLink>
+				<RouterLink to="/home">Home</RouterLink>
 				<RouterLink to="/about">About</RouterLink>
 			</nav>
 		</div>
 	</header>
 
 	<div class="full-height">
+		
 		<div id="nav" style="height: 90px">
 			<h1 style="margin: 0">Golden Layout Demo</h1>
 			<button @click="onClickInitLayoutMinRow">Init Layout MinRow</button>
@@ -28,12 +29,13 @@
 			<button @click="onClickLoadLayout">Load Layout</button>
 		</div>
 		<golden-layout
+		:router="true"
 			ref="GLayoutRoot"
 			:config="prefinedLayouts.miniRow"
 			style="width: 100%; height: calc(100% - 162px)"
 		>
-			<template #Content1>
-				<div style="color: white">111</div>
+			<template #Content1="{ abc }">
+				<div style="color: white">{{abc || 111}}</div>
 			</template>
 			<template #Content2>
 				<div style="width: 100%; color: white; overflow: auto">
@@ -43,30 +45,18 @@
 			<template #Content3>
 				<c3 />
 			</template>
-			<template #route>
-				<RouterView />
-			</template>
-			<gl-col>
-				<gl-component ref="myComp" id="myComp">
-					<div style="color: white">111</div>
-				</gl-component>
-			</gl-col>
 		</golden-layout>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import { prefinedLayouts } from "@/ts/predefined-layouts";
 import C3 from "@/components/Content3.vue";
-import { GoldenLayout, GlCol, GlComponent } from './components/main';
+import { GoldenLayout } from './components/index';
 
 const GLayoutRoot = ref<null | typeof GoldenLayout>(null);
-const myComp = ref<null | typeof GlComponent>(null);
-onMounted(() => {
-	//console.log(myComp.value.path);
-});
 const onClickInitLayoutMinRow = () => {
 	if (!GLayoutRoot.value) return;
 	GLayoutRoot.value.loadGLLayout(prefinedLayouts.miniRow);
@@ -164,3 +154,4 @@ nav a:first-of-type {
 	}
 }
 </style>
+./components

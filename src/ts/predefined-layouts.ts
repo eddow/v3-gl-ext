@@ -9,37 +9,28 @@ const miniRowConfig: LayoutConfig = {
 		type: ItemType.column,
 		content: [{
 			type: "component",
-			title: "Welcome",
+			title: "Init",
 			header: { show: "top" },
-			isClosable: false,
-			reorderEnabled: false,
-			componentType: "route",
+			componentType: "Content1",
 			width: 10,
-			componentState: {
-				main: true,
-				route: "/"
-			},
+			componentState: { abc: 'Yhea' },
 		} as ComponentItemConfig, {
 			type: ItemType.row,
-			content: [
-				{
-					type: "component",
-					title: "Title 1st",
-					header: { show: "top" },
-					isClosable: false,
-					componentType: "Content1",
-					width: 10,
-					componentState: undefined,
-				} as ComponentItemConfig,
-				{
-					type: "component",
-					title: "I'm wide",
-					header: { show: "top", popout: false },
-					componentType: "Content2",
-					componentState: { abc: 123 },
-				} as ComponentItemConfig
-			]
-		}]
+			content: [{
+				type: "component",
+				title: "Title 1st",
+				header: { show: "top" },
+				isClosable: false,
+				componentType: "Content1",
+				width: 10,
+				componentState: { abc: 123 },
+			} as ComponentItemConfig, {
+				type: "component",
+				title: "I'm wide",
+				header: { show: "top", popout: false },
+				componentType: "Content2"
+			} as ComponentItemConfig
+		]}]
 	}
 };
 

@@ -1,8 +1,10 @@
 <template>
 	<div style="position: relative">
-		<ExtractOneChild v-model:child="onlyChild">
-			<slot></slot>
-		</ExtractOneChild>
+		<SlotExtr ref="predef">
+			<template v-if="props.router" #route="{ url }">
+				<FixedRoute :route="url" />
+			</template>
+		</SlotExtr>
 		<div ref="GLRoot" style="position: absolute; width: 100%; height: 100%">
 			<!-- Root dom for Golden-Layout manager -->
 		</div>
@@ -25,11 +27,9 @@ import {
 	readonly,
 	nextTick,
 	getCurrentInstance,
+	provide,
 	type PropType,
-	type VNode,
-	inject,
-watchEffect,
-provide,
+	type Slots
 } from "vue";
 import {
 	ComponentContainer,
@@ -43,20 +43,14 @@ import {
 	VirtualLayout,
 	ResolvedLayoutConfig,
 	JsonValue,
+ComponentItem,
 } from "golden-layout";
 import GlTemplate from "@/components/GlTemplate.vue";
-import ExtractOneChild from "@/components/utils/ExtractOneChild.vue";
-import { glParent, type GlChild } from "./roles";
 import { layoutKey } from "./consts";
+import { useRouter, type RouteLocation, useRoute } from 'vue-router';
+import SlotExtr from "./utils/SlotExtr.vue";
+import FixedRoute from './utils/FixedRoute.vue';
 
-const
-	onlyChild = ref<undefined | VNode>(),
-	extensoConfig = ref<LayoutConfig | ResolvedLayoutConfig | undefined>();
-watchEffect(()=> {
-	const lr = {root: {}}
-	extensoConfig.value = <LayoutConfig>(onlyChild.value && lr);
-	//&& (<GlChild>onlyChild.value).config;
-});
 type AnyItemConfigs = 
 		RowOrColumnItemConfig[] |
 		StackItemConfig[] |
@@ -65,45 +59,69 @@ type AnyItemConfigs =
 /*******************
  * Prop
  *******************/
-const props = defineProps({
-	config: {
-		type: Object as PropType<LayoutConfig | ResolvedLayoutConfig>,
-		default: () => ({}),
-	},
-});
-
+const
+	props = defineProps({
+		config: {
+			type: Object as PropType<LayoutConfig | ResolvedLayoutConfig>,
+			default: ()=> ({}),
+		},
+		router: {
+			type: Boolean,
+			default: false
+		}
+	}),
 /*******************
  * Data
  *******************/
-const GLRoot = ref<null | HTMLElement>(null);
+	GLRoot = ref<null | HTMLElement>(null),
+	GlcKeyPrefix = readonly(ref("glc_")),
+	MapComponents = new Map<
+		ComponentContainer,
+		{ refId: number; glc: typeof GlTemplate }
+	>(),
+	AllComponents = ref(new Map<number, any>()),
+	UnusedIndexes: number[] = [],
+	instance = getCurrentInstance(),
+	slots = instance!.slots,
+	predef = ref<typeof SlotExtr>(),
+	routeChildren = <Record<string,number>>{},
+	router = useRouter();
 let GLayout: VirtualLayout;
-const GlcKeyPrefix = readonly(ref("glc_"));
 
-const MapComponents = new Map<
-	ComponentContainer,
-	{ refId: number; glc: typeof GlTemplate }
->();
+if(props.router)
+	router.afterEach((route: RouteLocation)=> {
+		const url = route.fullPath;
+		if(url && url !== '/') {
+			if(routeChildren[url]) {
+				const cntnr = Array.from(MapComponents.entries()).find(([key, value])=> value.refId === routeChildren[route.fullPath])?.[0];
+				if(cntnr) cntnr.focus(true);
+			} else
+				addGlComponent(
+					'route',
+					<string>(route.meta.title || route.name) || route.path.split('/').pop() || '[Route]',
+					{url}
+				);
+		}
+	});
 
-const AllComponents = ref(new Map<number, any>());
-const UnusedIndexes: number[] = [];
 let CurIndex = 0;
 let GlBoundingClientRect: DOMRect;
-
-const instance = getCurrentInstance(),
-	slots = instance!.slots;
 provide(layoutKey, instance?.exposed);
 /*******************
  * Method
  *******************/
 /** @internal */
 const addComponent = async (componentType: string, componentState: JsonValue|undefined) => {
-	const glc = slots[componentType];
+	const glc = slots[componentType] || (<Slots>predef.value?.slots)[componentType];
 	if(!glc) throw new Error(`addComponent: Component '${componentType}' not found in slots`)
 	let index = CurIndex;
 	if (UnusedIndexes.length > 0) index = UnusedIndexes.pop() as number;
 	else CurIndex++;
 	AllComponents.value.set(index, ()=> glc(componentState));
 
+	if(props.router && componentType === 'route') {
+		routeChildren[(<{url: string}>componentState).url] = index;
+	}
 	return index;
 };
 
@@ -248,7 +266,7 @@ onMounted(() => {
 		const ref = GlcKeyPrefix.value + refId;
 		const component = instance?.refs[ref] as typeof GlTemplate;
 
-		MapComponents.set(container, { refId: refId, glc: component[0] });
+		MapComponents.set(container, { refId, glc: component[0] });
 
 		container.virtualRectingRequiredEvent = (container, width, height) =>
 			handleContainerVirtualRectingRequiredEvent(
@@ -273,7 +291,6 @@ onMounted(() => {
 				logicalZIndex,
 				defaultZIndex
 			);
-
 		return {
 			component,
 			virtual: true,
@@ -291,6 +308,13 @@ onMounted(() => {
 		MapComponents.delete(container);
 		AllComponents.value.delete(component.refId);
 		UnusedIndexes.push(component.refId);
+		Object.entries(routeChildren).find(([key, value])=> {
+			if(value === component.refId) {
+				delete routeChildren[key];
+				return true;
+			}
+			return false;
+		});
 	};
 
 	GLayout = new VirtualLayout(
@@ -298,7 +322,11 @@ onMounted(() => {
 		bindComponentEventListener,
 		unbindComponentEventListener
 	);
-
+	if(props.router) GLayout.on('activeContentItemChanged', (ci: ComponentItem)=> {
+		let url = ci.componentType === 'route' ? (<{url: string}>ci.container.state)?.url : '/';
+		if(router.currentRoute.value.fullPath !== url)
+			router.replace(url);
+	});
 	GLayout.beforeVirtualRectingEvent = handleBeforeVirtualRectingEvent;
 	if(props.config) loadGLLayout(props.config);
 });
@@ -310,19 +338,7 @@ const components = ref<Record<string, any>>({});
  *******************/
 defineExpose({
 	addGlComponent,
-	/* TODO:
-	- on-config-change, $emit('update:modelValue', layoutConfig)
-	- watch layoutConfig & reload if needed
-	- stop exposing load/get
-	*/
 	loadGLLayout,
-	getLayoutConfig,
-	registerComponent: (id: string, component: any) => {
-		components.value[id] = component;
-	},
-	get path() {
-		return '';
-	},
-	...glParent(getCurrentInstance()!)
+	getLayoutConfig
 });
 </script>
